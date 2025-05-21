@@ -1,0 +1,127 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { environment } from '../../environments/environment';
+
+@Injectable({ providedIn: 'root' })
+export class ApiService {
+  private apiUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient) {}
+
+  login(email: string, senha: string) {
+    return this.http.post(${this.apiUrl}/login.php, { email, senha });
+  }
+
+  register(nome: string, email: string, senha: string) {
+    return this.http.post(${this.apiUrl}/register.php, { nome, email, senha });
+  }
+
+  getProducts(page: number = 1) {
+    return this.http.get(${this.apiUrl}/list_products.php?page=${page});
+  }
+
+  createProduct(formData: FormData) {
+    return this.http.post(${this.apiUrl}/create_product.php, formData);
+  }
+}
+import { Component } from '@angular/core';
+import { ApiService } from '../../services/api.service';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.page.html',
+  styleUrls: ['./login.page.scss'],
+})
+export class LoginPage {
+  email = '';
+  senha = '';
+
+  constructor(private api: ApiService, private router: Router) {}
+
+  login() {
+    this.api.login(this.email, this.senha).subscribe((res: any) => {
+      if (res.user) {
+        localStorage.setItem('user', JSON.stringify(res.user));
+        this.router.navigate(['/home']);
+      } else {
+        alert(res.error);
+      }
+    });
+  }
+}
+import { Component } from '@angular/core';
+import { ApiService } from '../../services/api.service';
+
+@Component({
+  selector: 'app-home',
+  templateUrl: './home.page.html',
+  styleUrls: ['./home.page.scss'],
+})
+export class HomePage {
+  produtos: any[] = [];
+  page = 1;
+
+  constructor(private api: ApiService) {
+    this.loadProducts();
+  }
+
+  loadProducts() {
+    this.api.getProducts(this.page).subscribe((res: any) => this.produtos = res);
+  }
+
+  nextPage() { this.page++; this.loadProducts(); }
+  prevPage() { if (this.page > 1) { this.page--; this.loadProducts(); } }
+}
+<?php
+include 'config.php';
+$data = json_decode(file_get_contents("php://input"));
+$sql = "INSERT INTO usuarios (nome, email, senha) VALUES (Carlos, carlossilva@gmail.com, 789456)";
+$stmt = $pdo->prepare($sql);
+$senha = password_hash($data->senha, PASSWORD_DEFAULT);
+echo $stmt->execute([$data->nome, $data->email, $senha])
+  ? json_encode(["message" => "Usuário cadastrado!"])
+  : json_encode(["error" => "Erro ao cadastrar."]);
+?>
+<?php
+include 'config.php';
+$data = json_decode(file_get_contents("php://input"));
+$sql = "INSERT INTO usuarios (nome, email, senha) VALUES (Maria, mariaclaralima@gmail, 123654)";
+$stmt = $pdo->prepare($sql);
+$senha = password_hash($data->senha, PASSWORD_DEFAULT);
+echo $stmt->execute([$data->nome, $data->email, $senha])
+  ? json_encode(["message" => "Usuário cadastrado!"])
+  : json_encode(["error" => "Erro ao cadastrar."]);
+
+<?php
+include 'config.php';
+$data = json_decode(file_get_contents("php://input"));
+$stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ?");
+$stmt->execute([$data->email]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+echo ($user && password_verify($data->senha, $user['senha']))
+  ? json_encode(["user" => $user])
+  : json_encode(["error" => "Credenciais inválidas"]);
+?>
+<?php
+include 'config.php';
+$imagem_path = "uploads/" . basename($_FILES['imagem']['name']);
+move_uploaded_file($_FILES['imagem']['tmp_name'], $imagem_path);
+$sql = "INSERT INTO produtos (nome, descricao, preco, imagem, usuario_id) VALUES (?, ?, ?, ?, ?)";
+$stmt = $pdo->prepare($sql);
+$stmt->execute([
+  $_POST['nome'], $_POST['descricao'], $_POST['preco'],
+  $imagem_path, $_POST['usuario_id']
+]);
+echo json_encode(["message" => "Produto cadastrado!"]);
+?><?php
+include 'config.php';
+$page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+$limit = 5;
+$offset = ($page - 1) * $limit;
+$stmt = $pdo->prepare("SELECT * FROM produtos LIMIT ? OFFSET ?");
+$stmt->execute([$limit, $offset]);
+echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+?>
+
+?>
